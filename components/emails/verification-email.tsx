@@ -29,6 +29,14 @@ export const VerificationEmail: React.FC<VerificationEmailProps> = ({
       
       <p>If you didn't request this code, please ignore this email.</p>
       
+      <p style={{
+        fontSize: '14px',
+        backgroundColor: '#f8f9fa',
+        padding: '12px',
+        borderRadius: '4px',
+        border: '1px solid #e1e1e1'
+      }}><strong>Important:</strong> We will NEVER ask for your Pitt Computing password.</p>
+      
       <div style={{
         marginTop: '40px',
         padding: '20px 0',

@@ -1,0 +1,65 @@
+.heroContainer {
+  visibility: hidden;
+}
+
+.heroContainer :global(.split-word) {
+  will-change: transform, opacity;
+  display: inline-block;
+}
+
+.cta {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.4);
+  opacity: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cta:hover {
+  transform: scale(1.01);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+.cta:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.4);
+  outline-offset: 2px;
+}
+
+.cta:active {
+  transform: scale(0.98);
+  transition-duration: 0.1s;
+}
+
+.cta:hover::after {
+  animation: ripple 0.6s ease-out forwards;
+}
+
+/* Ensure the main hero CTA button scales properly */
+.heroContainer .cta:hover {
+  transform: scale(1.01);
+}
+
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.5;
+  }
+  100% {
+    width: 250px;
+    height: 250px;
+    opacity: 0;
+  }
+} 

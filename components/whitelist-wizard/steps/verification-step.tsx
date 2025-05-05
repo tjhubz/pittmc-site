@@ -218,9 +218,23 @@ export function VerificationStep() {
               {formatTime(otpTimeLeft)}
             </span>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Please check your spam/junk folder if you don't see the email.
-          </p>
+          
+          <Alert className="mt-4 text-left flex items-start">
+            <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+            <AlertDescription>
+              <p className="text-sm">
+                Our verification emails are sometimes marked as spam. You may need to <a 
+                  href="https://services.pitt.edu/TDClient/33/Portal/KB/ArticleDet?ID=166" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline"
+                >
+                  release the email from quarantine
+                </a>. 
+                We will <span className="font-bold">NEVER</span> ask for your Pitt Computing password.
+              </p>
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
       

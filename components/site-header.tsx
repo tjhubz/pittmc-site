@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import styles from "@/app/hero-animations.module.css"
 
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -65,7 +66,11 @@ export function SiteHeader() {
           >
             Discord
           </a>
-          <Button asChild size="sm" className="bg-[#003594] hover:bg-[#003594]/90">
+          <Button 
+            asChild 
+            size="sm" 
+            className={`bg-[#003594] hover:bg-[#003594]/90 ${styles.cta}`}
+          >
             <Link href="/whitelist-wizard">Get Whitelisted</Link>
           </Button>
         </nav>
@@ -166,7 +171,7 @@ export function SiteHeader() {
                 <div className="px-2 pt-2">
                   <Button
                     asChild
-                    className="w-full bg-[#003594] hover:bg-[#003594]/90"
+                    className={`w-full bg-[#003594] hover:bg-[#003594]/90 ${styles.cta}`}
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Link href="/whitelist-wizard">Get Whitelisted</Link>
