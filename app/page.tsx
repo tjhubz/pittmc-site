@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Users, Server, MessageSquare } from "lucide-react"
+import { ArrowRight, Users, Server, MessageSquare, Github } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/site-header"
 import { animate, stagger } from "motion"
@@ -83,9 +83,10 @@ export default function HomePage() {
             priority={false}
             quality={85}
             sizes="100vw"
-            className={`object-cover transition-opacity duration-1000 ${
+            className={`object-cover object-right md:object-center transition-opacity duration-1000 ${
               imageLoaded ? "opacity-100" : "opacity-0"
             }`}
+            style={{ objectPosition: '80% center' }}
             onLoad={() => setImageLoaded(true)}
           />
         </div>
@@ -200,6 +201,17 @@ export default function HomePage() {
             Mojang, Microsoft, or the University of Pittsburgh. This is an alumni-run server 
             to create an inclusive community for Pitt affiliates.
           </p>
+          <div className="mt-4">
+            <a 
+              href="https://github.com/tjhubz/pittmc-site" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-white/70 hover:text-white/90 transition-colors inline-flex items-center"
+              aria-label="GitHub Repository"
+            >
+              <Github className="h-5 w-5" />
+            </a>
+          </div>
         </div>
       </footer>
     </div>
