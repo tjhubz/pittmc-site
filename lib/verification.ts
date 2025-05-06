@@ -19,8 +19,6 @@ export function isValidPittEmail(email: string): boolean {
   return email.toLowerCase().endsWith('@pitt.edu');
 }
 
-// Secret key for signing JWTs - in production, this should be an environment variable
-const JWT_SECRET = crypto.randomBytes(32).toString('hex');
 // Store secret in KV for persistence across cold starts
 export async function getJwtSecret(env: any): Promise<string> {
   let secret = await env.VERIFICATION_CODES.get('JWT_SECRET');

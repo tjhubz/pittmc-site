@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import { generateVerificationCode } from "@/lib/verification";
-import { VerificationEmail } from "@/components/emails/verification-email";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-// Don't initialize Resend at module scope
-// We'll create it inside the handler when we have access to env vars
-let resend: Resend;
+import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,9 +15,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a 6-digit verification code
-    const verificationCode = generateVerificationCode();
-
     // Get KV namespace from Cloudflare context
     const { env } = getCloudflareContext();
     
@@ -35,41 +26,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Initialize Resend with the API key from env
-    if (!resend && env.RESEND_API_KEY) {
-      resend = new Resend(env.RESEND_API_KEY);
-    }
+    // Generate a unique session ID for this verification attempt
+    const sessionId = uuidv4();
     
-    if (!resend) {
-      console.error("Resend API key not available");
-      return NextResponse.json(
-        { error: "Email service configuration error" },
-        { status: 500 }
-      );
-    }
-
-    // Store code with 15-minute expiration (900 seconds)
-    await env.VERIFICATION_CODES.put(email, verificationCode, { expirationTtl: 900 });
-
-    // Send email with verification code using React template
-    const { data, error } = await resend.emails.send({
-      from: "PittMC <help@pittmc.com>",
-      to: email,
-      subject: "Your Requested Pitt Minecraft Code",
-      react: VerificationEmail({ verificationCode }) as React.ReactNode,
+    // Store the session ID with the email as the key (30-minute expiration)
+    await env.VERIFICATION_CODES.put(`awaiting:${email.toLowerCase()}`, sessionId, { expirationTtl: 1800 });
+    
+    // Return the session ID to the client
+    return NextResponse.json({ 
+      success: true,
+      sessionId,
+      message: "Please send an email from your Pitt account to verify@pittmc.com"
     });
-
-    if (error) {
-      console.error("Error sending email:", error);
-      return NextResponse.json(
-        { error: "Failed to send verification email" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in verification email API:", error);
+    console.error("Error in email verification request:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,25 +1,28 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { ArrowLeft, ArrowRight, Mail, AlertCircle, Smartphone } from "lucide-react"
+import { ArrowLeft, ArrowRight, Mail, ExternalLink, Check, RefreshCw, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useWhitelist } from "../whitelist-context"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
-import { Progress } from "@/components/ui/progress"
-import { useOTPDetection } from "@/hooks/use-otp-detection"
 import { useToast } from "@/hooks/use-toast"
 
 interface VerificationResponse {
   success?: boolean;
   error?: string;
   token?: string;
+  verified?: boolean;
+}
+
+interface InitializeResponse {
+  success?: boolean;
+  error?: string;
+  sessionId?: string;
+  message?: string;
 }
 
 export function VerificationStep() {
   const { 
-    verificationCode, 
-    setVerificationCode, 
     email,
     setToken,
     setCurrentStep, 
@@ -27,104 +30,66 @@ export function VerificationStep() {
     setIsSubmitting, 
     error, 
     setError,
-    otpTimeLeft,
-    canResendOtp,
-    resetOtpTimer
   } = useWhitelist()
 
   const { toast } = useToast()
-  const [resending, setResending] = useState(false)
-  const [progressValue, setProgressValue] = useState(100)
-  const [otpDetectionSupported, setOtpDetectionSupported] = useState(false)
+  const [sessionId, setSessionId] = useState("")
+  const [checkingStatus, setCheckingStatus] = useState(false)
+  const [lastCheckTime, setLastCheckTime] = useState(0)
+  const [emailSent, setEmailSent] = useState(false)
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
   
-  // Check if OTP detection is supported
+  // Handle cooldown timer for check status button
   useEffect(() => {
-    const isOTPSupported = typeof window !== 'undefined' && 'OTPCredential' in window
-    setOtpDetectionSupported(isOTPSupported)
-  }, [])
-  
-  // Update progress bar based on timer
-  useEffect(() => {
-    // Map otpTimeLeft to a percentage (300 seconds = 100%, 0 seconds = 0%)
-    const percentage = (otpTimeLeft / 300) * 100
-    setProgressValue(percentage)
-  }, [otpTimeLeft])
-  
-  // Handler for OTP auto-detection
-  const handleOTPReceived = useCallback((code: string) => {
-    if (code && code.length === 6) {
-      setVerificationCode(code)
+    if (cooldownRemaining > 0) {
+      const timer = setTimeout(() => {
+        setCooldownRemaining(prev => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [setVerificationCode])
-  
-  // Use OTP detection hook
-  useOTPDetection({ onOTPReceived: handleOTPReceived })
+  }, [cooldownRemaining]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs < 10 ? "0" : ""}${secs}`
-  }
+  // Initialize the session when component mounts
+  useEffect(() => {
+    if (email && !sessionId) {
+      initializeSession()
+    }
+  }, [email])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Initialize the verification session
+  const initializeSession = async () => {
     setIsSubmitting(true)
     setError("")
-
-    // Validate code format
-    if (verificationCode.length !== 6) {
-      setError("Please enter a valid 6-digit verification code")
-      toast({
-        variant: "destructive",
-        title: "Invalid Code",
-        description: "Please enter a valid 6-digit verification code"
-      })
-      setIsSubmitting(false)
-      return
-    }
-
+    
     try {
-      // Verify the code using API
-      const response = await fetch('/api/verify-code', {
+      const response = await fetch('/api/send-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          email,
-          code: verificationCode 
+          email
         }),
       });
 
-      const data = await response.json() as VerificationResponse;
+      const data = await response.json() as InitializeResponse;
 
       if (!response.ok) {
-        setError(data.error || "Invalid verification code");
+        setError(data.error || "Failed to initialize verification");
         toast({
           variant: "destructive",
           title: "Verification Failed",
-          description: data.error || "Invalid verification code"
+          description: data.error || "Failed to initialize verification"
         });
         setIsSubmitting(false);
         return;
       }
 
-      // Store the token and move to next step
-      if (data.token) {
-        setToken(data.token);
-        setIsSubmitting(false);
-        setCurrentStep(3);
-      } else {
-        setError("Verification failed: No token received");
-        toast({
-          variant: "destructive",
-          title: "Verification Failed",
-          description: "No token received"
-        });
-        setIsSubmitting(false);
-      }
+      setSessionId(data.sessionId || "");
+      setIsSubmitting(false);
+      setEmailSent(true);
     } catch (err) {
-      console.error("Error verifying code:", err);
+      console.error("Error initializing verification:", err);
       setError("An error occurred. Please try again.");
       toast({
         variant: "destructive",
@@ -135,139 +100,173 @@ export function VerificationStep() {
     }
   }
 
-  const handleResendCode = async () => {
-    if (!canResendOtp) return;
+  // Check verification status
+  const checkVerificationStatus = async () => {
+    // Don't check if already checking or cooldown is active
+    if (checkingStatus || cooldownRemaining > 0) return;
     
-    setResending(true);
+    setCheckingStatus(true);
+    setLastCheckTime(Date.now());
     setError("");
-    
+
     try {
-      // Resend verification email
-      const response = await fetch('/api/send-verification', {
+      const response = await fetch('/api/check-verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email,
+          sessionId
+        }),
       });
 
-      const resendData = await response.json() as VerificationResponse;
-      
-      if (response.ok) {
-        // Reset timer
-        resetOtpTimer();
-        toast({
-          title: "Code Resent",
-          description: "A new verification code has been sent to your email"
-        });
-      } else {
-        setError(resendData.error || "Failed to resend verification code");
+      const data = await response.json() as VerificationResponse;
+
+      if (!response.ok) {
+        setError(data.error || "Failed to check verification status");
         toast({
           variant: "destructive",
-          title: "Failed to Resend",
-          description: resendData.error || "Failed to resend verification code"
+          title: "Status Check Failed",
+          description: data.error || "Failed to check verification status"
         });
+        setCheckingStatus(false);
+        setCooldownRemaining(10); // 10-second cooldown
+        return;
       }
+
+      // If verified, store token and proceed
+      if (data.verified && data.token) {
+        setToken(data.token);
+        toast({
+          title: "Verification Successful",
+          description: "Your email has been verified"
+        });
+        setCheckingStatus(false);
+        setCurrentStep(3);
+        return;
+      } 
+      
+      // Not yet verified
+      toast({
+        title: "Not Yet Verified",
+        description: "We haven't received your verification email yet"
+      });
+      
+      setCheckingStatus(false);
+      setCooldownRemaining(10); // 10-second cooldown
     } catch (err) {
-      console.error("Error resending code:", err);
-      setError("Failed to resend verification code");
+      console.error("Error checking verification status:", err);
+      setError("An error occurred. Please try again.");
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to resend verification code"
+        description: "An error occurred. Please try again."
       });
-    } finally {
-      setResending(false);
+      setCheckingStatus(false);
+      setCooldownRemaining(10); // 10-second cooldown
     }
   }
 
+  const handleStartOver = () => {
+    setSessionId("");
+    setEmailSent(false);
+    initializeSession();
+  }
+
+  const openMailClient = () => {
+    window.open(`mailto:verify@pittmc.com?subject=Verify PittMC Account&body=This email verifies my PittMC account.%0A%0ASent from ${email}`, '_blank');
+  }
+
   return (
-    <form onSubmit={handleSubmit}>
+    <div>
       <div className="mb-6 text-center">
         <Mail className="mx-auto h-12 w-12 rounded-full bg-primary/10 p-2 text-primary" />
         <h2 className="mt-4 text-xl font-semibold">Verify Your Email</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          We've sent a 6-digit code to <span className="font-medium">{email}</span>
+          Please verify your Pitt email: <span className="font-medium break-all">{email}</span>
         </p>
       </div>
       
       <div className="space-y-4">
-        <div className="mx-auto max-w-[320px] flex justify-center">
-          <InputOTP
-            maxLength={6}
-            value={verificationCode}
-            onChange={setVerificationCode}
-            render={({ slots }) => (
-              <InputOTPGroup className="gap-2">
-                {slots.map((slot, index) => (
-                  <InputOTPSlot 
-                    key={index} 
-                    {...slot} 
-                    className="h-14 w-14 text-center text-2xl border-[1px] border-input rounded-md focus-visible:ring-1 focus-visible:ring-ring"
-                  />
-                ))}
-              </InputOTPGroup>
-            )}
-          />
-        </div>
-        
-        <div className="text-center">
-          <div className="flex items-center justify-center text-sm">
-            <span className="mr-2 text-muted-foreground">Code expires in:</span>
-            <span className={`font-semibold ${otpTimeLeft < 60 ? 'text-destructive' : 'text-primary'}`}>
-              {formatTime(otpTimeLeft)}
-            </span>
+        {!emailSent ? (
+          <div className="flex justify-center">
+            <Button 
+              onClick={initializeSession} 
+              disabled={isSubmitting}
+              className="w-full max-w-[320px]"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center">
+                  <span className="mr-2">Initializing...</span>
+                  <span className="h-4 w-4 border-2 border-current border-r-transparent animate-spin rounded-full" />
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  Begin Verification
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </span>
+              )}
+            </Button>
           </div>
-          
-          <Alert className="mt-4 text-left flex items-start">
-            <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-            <AlertDescription>
-              <p className="text-sm">
-                Our verification emails are sometimes marked as spam. You may need to <a 
-                  href="https://services.pitt.edu/TDClient/33/Portal/KB/ArticleDet?ID=166" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium text-primary hover:underline"
+        ) : (
+          <div className="space-y-4">
+            <Alert className="bg-primary/10 border border-primary/20">
+              <div className="space-y-2">
+                <p className="font-medium">Verification Instructions:</p>
+                <ol className="list-decimal pl-5 space-y-2 text-sm">
+                  <li>Send an email from your <strong>@pitt.edu</strong> address to <strong>verify@pittmc.com</strong></li>
+                  <li>Wait a few seconds after sending</li>
+                  <li>Click "Check Verification Status" below</li>
+                </ol>
+              </div>
+            </Alert>
+            
+            <div className="flex flex-col gap-3 items-center">
+              <div className="w-full max-w-[320px]">
+                <Button
+                  className="w-full gap-2"
+                  onClick={checkVerificationStatus}
+                  disabled={checkingStatus || cooldownRemaining > 0}
                 >
-                  release the email from quarantine
-                </a>. 
-                We will <span className="font-bold">NEVER</span> ask for your Pitt Computing password.
-              </p>
-            </AlertDescription>
-          </Alert>
-        </div>
+                  {checkingStatus ? (
+                    <span className="flex items-center">
+                      <span className="mr-2">Checking...</span>
+                      <span className="h-4 w-4 border-2 border-current border-r-transparent animate-spin rounded-full" />
+                    </span>
+                  ) : cooldownRemaining > 0 ? (
+                    <span className="flex items-center">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Check Again in {cooldownRemaining}s
+                    </span>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Check Verification Status
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-center mt-1 text-muted-foreground">
+                  You can check every 10 seconds
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
-      <div className="mt-6 flex flex-col gap-2">
-        <Button 
-          type="submit" 
-          className="w-full" 
-          disabled={isSubmitting || verificationCode.length !== 6}
-        >
-          {isSubmitting ? (
-            <span className="flex items-center">
-              <span className="mr-2">Verifying...</span>
-              <span className="h-4 w-4 border-2 border-current border-r-transparent animate-spin rounded-full" />
-            </span>
-          ) : (
-            <span className="flex items-center">
-              Continue
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </span>
-          )}
-        </Button>
-        
+      <div className="mt-6">
         <Button 
           type="button" 
           variant="outline" 
           onClick={() => setCurrentStep(1)}
-          className="mt-2"
-          disabled={isSubmitting}
+          className="w-full"
+          disabled={isSubmitting || checkingStatus}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Email
         </Button>
       </div>
-    </form>
+    </div>
   )
 } 

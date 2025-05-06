@@ -23,11 +23,6 @@ interface WhitelistContextType {
   isSubmitting: boolean
   error: string
   
-  // OTP timer state
-  otpTimeLeft: number
-  canResendOtp: boolean
-  resetOtpTimer: () => void
-  
   // State setters
   setCurrentStep: (step: number) => void
   setEmail: (email: string) => void
@@ -61,44 +56,11 @@ export function WhitelistProvider({ children }: { children: ReactNode }) {
   const [statusType, setStatusType] = useState<StatusType>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
-  
-  // OTP timer state
-  const [otpTimeLeft, setOtpTimeLeft] = useState(300) // 5 minutes in seconds
-  const [canResendOtp, setCanResendOtp] = useState(false)
-
-  // Initialize OTP timer when we reach the verification step
-  useEffect(() => {
-    if (currentStep === 2 && email) {
-      // Reset the timer when we enter the verification step
-      setOtpTimeLeft(300)
-      setCanResendOtp(false)
-      
-      // Start the timer
-      const interval = setInterval(() => {
-        setOtpTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval)
-            setCanResendOtp(true)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      
-      return () => clearInterval(interval)
-    }
-  }, [currentStep, email])
 
   // Create a wrapped setEmail function that logs changes
   const handleSetEmail = useCallback((value: string) => {
     console.log("Setting email to:", value)
     setEmail(value)
-  }, [])
-  
-  // Reset OTP timer function
-  const resetOtpTimer = useCallback(() => {
-    setOtpTimeLeft(300)
-    setCanResendOtp(false)
   }, [])
 
   const resetForm = useCallback(() => {
@@ -115,8 +77,6 @@ export function WhitelistProvider({ children }: { children: ReactNode }) {
     setStatusType('')
     setIsSubmitting(false)
     setError('')
-    setOtpTimeLeft(300)
-    setCanResendOtp(false)
   }, [])
 
   return (
@@ -134,9 +94,6 @@ export function WhitelistProvider({ children }: { children: ReactNode }) {
         statusType,
         isSubmitting,
         error,
-        otpTimeLeft,
-        canResendOtp,
-        resetOtpTimer,
         setCurrentStep,
         setEmail: handleSetEmail,
         setVerificationCode,

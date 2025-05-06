@@ -3,17 +3,22 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyEmailToken } from "@/lib/verification";
 
 // External API configuration
-const WHITELIST_API_BASE = "https://api.pittmc.com";
-const WHITELIST_API_ROUTE = process.env.WHITELIST_API_ROUTE || "/a4345hhb354hj34jd";
-const AUTH_USERNAME = process.env.WHITELIST_API_USERNAME || "Hiz4i66Th9HhX7nm";
-const AUTH_PASSWORD = process.env.WHITELIST_API_PASSWORD || "FzjFRT4KtmDTa7Gx";
-const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1368430533805215854/E6DiNGRffU9aVlCZ-KeDkOyDCDsPvZkiKw04aO5mjFT18eRHyXcaLruqQ3gjL6MZgRuU";
+const WHITELIST_API_BASE = process.env.WHITELIST_API_BASE || "https://api.pittmc.com";
+const WHITELIST_API_ROUTE = process.env.WHITELIST_API_ROUTE;
+const AUTH_USERNAME = process.env.WHITELIST_API_USERNAME;
+const AUTH_PASSWORD = process.env.WHITELIST_API_PASSWORD;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 // Log API configuration (without credentials) on startup
-console.log(`Whitelist API configured for: ${WHITELIST_API_BASE}${WHITELIST_API_ROUTE}`);
+console.log(`Whitelist API configured for: ${WHITELIST_API_BASE}${WHITELIST_API_ROUTE || "[ROUTE NOT CONFIGURED]"}`);
 
 // Function to send webhook notification to Discord
 async function sendDiscordWebhook(email: string, username: string, edition: string, device?: string) {
+  if (!DISCORD_WEBHOOK_URL) {
+    console.error("Discord webhook URL not configured");
+    return;
+  }
+
   try {
     const webhookData = {
       embeds: [{
@@ -143,6 +148,15 @@ export async function POST(request: NextRequest) {
     
     // Call the PittMC API to whitelist the user
     try {
+      // Check if required environment variables are set
+      if (!WHITELIST_API_ROUTE || !AUTH_USERNAME || !AUTH_PASSWORD) {
+        console.error("Missing required API configuration");
+        return NextResponse.json(
+          { error: "Whitelist API not properly configured" },
+          { status: 500 }
+        );
+      }
+      
       // Basic Auth credentials encoded as base64
       const authHeader = 'Basic ' + Buffer.from(`${AUTH_USERNAME}:${AUTH_PASSWORD}`).toString('base64');
       

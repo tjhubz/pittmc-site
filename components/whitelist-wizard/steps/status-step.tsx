@@ -159,8 +159,8 @@ export function StatusStep() {
   const getStatusAlert = () => {
     if (statusType === "error") {
       return (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert variant="destructive" className="flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 self-start mt-0.5" />
           <AlertDescription>
             There was an error processing your request. Please try again or contact our support team for assistance.
           </AlertDescription>
@@ -168,8 +168,8 @@ export function StatusStep() {
       )
     } else if (statusType === "warning" && edition === "bedrock") {
       return (
-        <Alert className="bg-yellow-50 text-yellow-700 border-yellow-200">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
+        <Alert className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 text-yellow-500 self-start mt-0.5" />
           <AlertDescription>
             <span className="font-medium">Your request was processed</span>, but Bedrock whitelist requests 
             can't be verified by our system. Please try joining the server. If you have trouble connecting, 
@@ -179,8 +179,8 @@ export function StatusStep() {
       )
     } else if (statusType === "warning") {
       return (
-        <Alert className="bg-yellow-50 text-yellow-700 border-yellow-200">
-          <AlertCircle className="h-4 w-4 text-yellow-500" />
+        <Alert className="bg-yellow-50 text-yellow-700 border-yellow-200 flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 text-yellow-500 self-start mt-0.5" />
           <AlertDescription>
             <span className="font-medium">Your username is already whitelisted!</span> You can join the server right away.
             If you're having trouble connecting, please contact us for assistance.
@@ -189,8 +189,8 @@ export function StatusStep() {
       )
     } else {
       return (
-        <Alert className="bg-green-50 text-green-700 border-green-200">
-          <CheckCircle2 className="h-4 w-4 text-green-500" />
+        <Alert className="bg-green-50 text-green-700 border-green-200 flex items-center">
+          <CheckCircle2 className="h-4 w-4 mr-2 flex-shrink-0 text-green-500 self-start mt-0.5" />
           <AlertDescription>
             <span className="font-medium">Success!</span> Your username has been whitelisted. You can now join the server.
           </AlertDescription>
@@ -209,16 +209,6 @@ export function StatusStep() {
         <h2 className="mt-4 text-xl font-semibold">
           {getStatusTitle()}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {statusType === "error" 
-            ? "There was an error submitting your whitelist request. Please try again or contact us for assistance."
-            : statusType === "warning" && edition === "bedrock" 
-              ? "Your whitelist request has been processed, but requires verification. Please try joining the server."
-              : statusType === "warning"
-                ? "Your username is already on our whitelist. You can join the server right away."
-                : "Your whitelist request has been successfully processed. Follow the instructions below to join our server."
-          }
-        </p>
       </div>
       
       {(statusType === "success" || statusType === "warning") && (
@@ -226,13 +216,6 @@ export function StatusStep() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Whitelist Status</CardTitle>
-              <CardDescription>
-                {statusType === "warning" && edition === "bedrock" 
-                  ? "Your request was processed, but requires verification" 
-                  : statusType === "warning"
-                    ? "Your username is already on our whitelist"
-                    : "Your whitelist request has been successfully processed"}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div>
@@ -291,8 +274,8 @@ export function StatusStep() {
               {getDeviceInstructions()}
               
               {statusType === "warning" && edition === "bedrock" && (
-                <Alert className="mt-4 bg-yellow-50 border-yellow-200">
-                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                <Alert className="mt-4 bg-yellow-50 border-yellow-200 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 text-yellow-500 self-start mt-0.5" />
                   <AlertDescription className="text-xs text-yellow-700">
                     <span className="font-medium">Note for Bedrock players:</span> After adding the server, 
                     try connecting. If you can't join, please contact us via Discord or email at help@pittmc.com.

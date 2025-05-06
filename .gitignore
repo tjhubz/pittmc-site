@@ -30,3 +30,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 wrangler.jsonc
+*.DS_Store
+.DS_Store

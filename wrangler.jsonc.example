@@ -35,9 +35,11 @@
       }
     ],
     "vars": {
-      "RESEND_API_KEY": "re_example_api_key",
-      "WHITELIST_API_USERNAME": "example-username",
-      "WHITELIST_API_PASSWORD": "example-password",
-      "WHITELIST_API_ROUTE": "/example-route"
+      "RESEND_API_KEY": "re_",
+      "WHITELIST_API_BASE": "https://api.pittmc.com",
+      "WHITELIST_API_USERNAME": "",
+      "WHITELIST_API_PASSWORD": "",
+      "WHITELIST_API_ROUTE": "",
+      "DISCORD_WEBHOOK_URL": ""
     }
   }
