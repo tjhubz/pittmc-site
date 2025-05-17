@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { updateWhitelistWebhook, WhitelistStep } from "@/lib/discord-webhook";
 
 interface EmailWebhookPayload {
   from: string;
@@ -54,6 +55,9 @@ export async function POST(request: NextRequest) {
     
     // Remove the awaiting status to prevent duplicate verifications
     await env.VERIFICATION_CODES.delete(`awaiting:${senderEmail}`);
+    
+    // Update the Discord webhook to show email verification
+    await updateWhitelistWebhook(sessionId, WhitelistStep.Verified, { email: senderEmail });
     
     // Log successful verification
     console.log(`Email verified for ${senderEmail}`);

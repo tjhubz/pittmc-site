@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { v4 as uuidv4 } from "uuid";
+import { sendWhitelistWebhook, WhitelistStep } from "@/lib/discord-webhook";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest) {
     
     // Store the session ID with the email as the key (30-minute expiration)
     await env.VERIFICATION_CODES.put(`awaiting:${email.toLowerCase()}`, sessionId, { expirationTtl: 1800 });
+    
+    // Send the initial Discord webhook
+    await sendWhitelistWebhook(email, sessionId, WhitelistStep.Started);
     
     // Return the session ID to the client
     return NextResponse.json({ 

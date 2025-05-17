@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { verifyEmailToken } from "@/lib/verification";
+import { updateWhitelistWebhook, WhitelistStep } from "@/lib/discord-webhook";
 
 // External API configuration
 const WHITELIST_API_BASE = process.env.WHITELIST_API_BASE || "https://api.pittmc.com";
@@ -9,10 +10,7 @@ const AUTH_USERNAME = process.env.WHITELIST_API_USERNAME;
 const AUTH_PASSWORD = process.env.WHITELIST_API_PASSWORD;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
-// Log API configuration (without credentials) on startup
-console.log(`Whitelist API configured for: ${WHITELIST_API_BASE}${WHITELIST_API_ROUTE || "[ROUTE NOT CONFIGURED]"}`);
-
-// Function to send webhook notification to Discord
+// This function is deprecated in favor of updateWhitelistWebhook
 async function sendDiscordWebhook(email: string, username: string, edition: string, device?: string) {
   if (!DISCORD_WEBHOOK_URL) {
     console.error("Discord webhook URL not configured");
@@ -22,7 +20,7 @@ async function sendDiscordWebhook(email: string, username: string, edition: stri
   try {
     const webhookData = {
       embeds: [{
-        title: "Successful Whitelist Request",
+        title: "Whitelist Process: Completed",
         color: 5814783, // Green color
         fields: [
           {
@@ -46,11 +44,19 @@ async function sendDiscordWebhook(email: string, username: string, edition: stri
             inline: true
           },
           {
+            name: "Status",
+            value: "Whitelist Request Completed",
+            inline: false
+          },
+          {
             name: "Time",
             value: new Date().toISOString(),
             inline: false
           }
         ],
+        footer: {
+          text: "Step 5/5: Completed"
+        },
         timestamp: new Date().toISOString()
       }]
     };
@@ -75,15 +81,16 @@ interface WhitelistRequestBody {
   username: string;      // Minecraft username
   edition: "java" | "bedrock"; // Minecraft edition
   device?: string;       // Device type (windows, mac, mobile, console)
+  sessionId: string;     // Session ID for tracking in Discord
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Parse the request body
-    const { token, username, edition, device } = await request.json() as WhitelistRequestBody;
+    const { token, username, edition, device, sessionId } = await request.json() as WhitelistRequestBody;
 
     // Validate inputs
-    if (!token || !username || !edition) {
+    if (!token || !username || !edition || !sessionId) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -105,6 +112,11 @@ export async function POST(request: NextRequest) {
     const email = await verifyEmailToken(token, env);
     
     if (!email) {
+      // Update Discord webhook with error
+      await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+        error: "Invalid or expired token"
+      });
+      
       return NextResponse.json(
         { error: "Invalid or expired token" },
         { status: 401 }
@@ -115,6 +127,12 @@ export async function POST(request: NextRequest) {
     if (edition === "java") {
       // Java usernames are 3-16 characters and only allow letters, numbers, and underscores
       if (!/^[a-zA-Z0-9_]{3,16}$/.test(username)) {
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: "Invalid Java username format",
+          email
+        });
+        
         return NextResponse.json(
           { error: "Invalid Java username format" },
           { status: 400 }
@@ -123,12 +141,24 @@ export async function POST(request: NextRequest) {
     } else if (edition === "bedrock") {
       // Bedrock usernames have different rules, but still limit length
       if (username.length < 1 || username.length > 16) {
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: "Invalid Bedrock username length",
+          email
+        });
+        
         return NextResponse.json(
           { error: "Invalid Bedrock username length" },
           { status: 400 }
         );
       }
     } else {
+      // Update Discord webhook with error
+      await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+        error: "Invalid edition type",
+        email
+      });
+      
       return NextResponse.json(
         { error: "Invalid edition type" },
         { status: 400 }
@@ -155,6 +185,16 @@ export async function POST(request: NextRequest) {
       // Check if required environment variables are set
       if (!WHITELIST_API_ROUTE || !AUTH_USERNAME || !AUTH_PASSWORD) {
         console.error("Missing required API configuration");
+        
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: "Whitelist API not properly configured",
+          email,
+          username,
+          edition,
+          device
+        });
+        
         return NextResponse.json(
           { error: "Whitelist API not properly configured" },
           { status: 500 }
@@ -181,6 +221,16 @@ export async function POST(request: NextRequest) {
       
       if (!response.ok) {
         console.error(`API returned status ${response.status}: ${await response.text()}`);
+        
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: `API error: ${response.status}`,
+          email,
+          username,
+          edition,
+          device
+        });
+        
         throw new Error(`API returned ${response.status}`);
       }
       
@@ -193,6 +243,16 @@ export async function POST(request: NextRequest) {
         apiResponse = JSON.parse(responseText);
       } catch (jsonError) {
         console.error("Failed to parse API response as JSON:", responseText);
+        
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: "Invalid API response format",
+          email,
+          username,
+          edition,
+          device
+        });
+        
         throw new Error("Invalid API response format");
       }
       
@@ -200,8 +260,13 @@ export async function POST(request: NextRequest) {
       
       // Map the API response to our response format
       if (apiResponse.status === "success" || apiResponse.status === "warning") {
-        // Send notification to Discord webhook
-        await sendDiscordWebhook(email, username, edition, device);
+        // Update the Discord webhook with completion status
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          email,
+          username,
+          edition,
+          device
+        });
         
         return NextResponse.json({ 
           success: true,
@@ -211,6 +276,15 @@ export async function POST(request: NextRequest) {
           edition: edition
         });
       } else {
+        // Update Discord webhook with error
+        await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+          error: apiResponse.response || "Failed to whitelist user",
+          email,
+          username,
+          edition,
+          device
+        });
+        
         return NextResponse.json({ 
           success: false,
           error: apiResponse.response || "Failed to whitelist user"
@@ -219,6 +293,16 @@ export async function POST(request: NextRequest) {
       
     } catch (error) {
       console.error("Error calling whitelist API:", error);
+      
+      // Update Discord webhook with error (if not already updated)
+      await updateWhitelistWebhook(sessionId, WhitelistStep.Completed, {
+        error: "Failed to whitelist user. The server will try to whitelist you manually.",
+        email,
+        username,
+        edition,
+        device
+      });
+      
       return NextResponse.json(
         { error: "Failed to whitelist user. The server will try to whitelist you manually." },
         { status: 500 }

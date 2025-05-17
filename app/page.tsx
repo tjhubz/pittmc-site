@@ -58,11 +58,11 @@ export default function HomePage() {
       // Animate button
       animate(
         button,
-        { opacity: [0, 1], scale: [0.95, 1] },
+        { opacity: [0, 1], y: [20, 0] },
         {
           type: "spring",
-          duration: 1,
-          bounce: 0.2,
+          duration: 1.2,
+          bounce: 0,
           delay: 0.8,
         }
       )

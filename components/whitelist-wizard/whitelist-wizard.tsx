@@ -19,7 +19,7 @@ function WizardContent() {
   }, [resetForm])
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="mx-auto w-full max-w-2xl relative z-10">
       <WhitelistSteps currentStep={currentStep} totalSteps={5} />
       
       <AnimatePresence mode="wait">

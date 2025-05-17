@@ -216,7 +216,7 @@ export function VerificationStep() {
                 <p className="font-medium">Verification Instructions:</p>
                 <ol className="list-decimal pl-5 space-y-2 text-sm">
                   <li>Send an email from your <strong>@pitt.edu</strong> address to <strong>verify@pittmc.com</strong></li>
-                  <li>Wait a few seconds after sending</li>
+                  <li>Wait about 30-60 seconds after sending</li>
                   <li>Click "Check Verification Status" below</li>
                 </ol>
               </div>
