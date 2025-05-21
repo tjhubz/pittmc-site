@@ -6,12 +6,15 @@ export default function MapPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <div className="flex-1 w-full h-full flex items-center justify-center" style={{ height: "calc(100vh - 4rem)" }}>
-        <div className="text-center p-8 max-w-2xl">
-          <h1 className="text-3xl font-bold mb-4">Map Maintenance</h1>
-          <p className="text-xl">The map is currently under maintenance. Please check back later.</p>
-        </div>
+      <div className="flex-1 w-full h-full">
+        <iframe 
+          src="https://map.pittmc.com" 
+          className="w-full h-full"
+          style={{ height: "calc(100vh - 4rem)" }}
+          title="PittMC Map"
+          allow="fullscreen"
+        />
       </div>
     </div>
   )
-} 
+}
